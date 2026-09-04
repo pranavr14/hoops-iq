@@ -1,9 +1,15 @@
+import os
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_KEY = os.getenv("BALLDONTLIE_API_KEY")
 
 URL = "https://api.balldontlie.io/v1/players"
 
 headers = {
-    "Authorization": "YOUR_API_KEY_HERE"
+    "Authorization": API_KEY
 }
 
 response = requests.get(URL, headers=headers)
