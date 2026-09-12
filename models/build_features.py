@@ -28,7 +28,14 @@ def build_features():
 
     # Group data by player
     player_groups = df.groupby("PLAYER_ID")
+    
+    # Group data by opponent
+    opponent_groups = df.groupby("OPPONENT")
 
+    # Average points scored against this opponent in prior games only
+    df["OPP_PTS_ALLOWED_AVG"] = opponent_groups["PTS"].transform(
+        lambda x: x.shift(1).expanding().mean()
+    )
     # Rolling averages use ONLY games before the game being predicted
     df["PTS_LAST_5"] = player_groups["PTS"].transform(
         lambda x: x.shift(1).rolling(5).mean()
@@ -79,6 +86,7 @@ def build_features():
         "GAME_DATE",
         "MATCHUP",
         "OPPONENT",
+	"OPP_PTS_ALLOWED_AVG",
         "HOME_GAME",
         "DAYS_REST",
         "PTS_LAST_5",

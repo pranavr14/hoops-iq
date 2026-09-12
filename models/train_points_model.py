@@ -32,16 +32,22 @@ def train_points_model():
         "AST_LAST_5",
         "FG3M_LAST_5",
         "MIN_LAST_5",
-        "PTS_LAST_10"
+        "PTS_LAST_10",
+	"OPP_PTS_ALLOWED_AVG",
     ]
 
     opponent_features = [
         column for column in df.columns
         if column.startswith("OPP_")
+        and column != "OPP_PTS_ALLOWED_AVG"
     ]
 
     features = features + opponent_features	
     target = "PTS"
+
+    df = df.dropna(
+        subset=["OPP_PTS_ALLOWED_AVG"]
+    )
 
     X = df[features]
     y = df[target]
