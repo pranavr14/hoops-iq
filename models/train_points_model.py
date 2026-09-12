@@ -13,7 +13,17 @@ def train_points_model():
     df["GAME_DATE"] = pd.to_datetime(df["GAME_DATE"])
 
     df = df.sort_values("GAME_DATE").reset_index(drop=True)
+    # Convert opponent team into numeric one-hot columns
+    opponent_dummies = pd.get_dummies(
+        df["OPPONENT"],
+        prefix="OPP",
+        dtype=int
+    )
 
+    df = pd.concat(
+        [df, opponent_dummies],
+        axis=1
+    )
     features = [
         "HOME_GAME",
         "DAYS_REST",
@@ -25,6 +35,12 @@ def train_points_model():
         "PTS_LAST_10"
     ]
 
+    opponent_features = [
+        column for column in df.columns
+        if column.startswith("OPP_")
+    ]
+
+    features = features + opponent_features	
     target = "PTS"
 
     X = df[features]

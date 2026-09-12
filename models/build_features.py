@@ -20,6 +20,11 @@ def build_features():
     df["HOME_GAME"] = (
         df["MATCHUP"].str.contains("vs.")
     ).astype(int)
+    # Extract opponent team abbreviation from MATCHUP
+    df["OPPONENT"] = df["MATCHUP"].apply(
+        lambda matchup: matchup.split()[-1]
+    )
+
 
     # Group data by player
     player_groups = df.groupby("PLAYER_ID")
@@ -73,6 +78,7 @@ def build_features():
         "GAME_ID",
         "GAME_DATE",
         "MATCHUP",
+        "OPPONENT",
         "HOME_GAME",
         "DAYS_REST",
         "PTS_LAST_5",
