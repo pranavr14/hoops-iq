@@ -80,7 +80,7 @@ def train_points_model():
     rf_mae = mean_absolute_error(y_test, rf_predictions)
 
     # Baseline: predict points using the player's last-5-game average
-    baseline_predictions = X_test["PTS_LAST_5"]
+    baseline_predictions = df["PTS_LAST_5"].iloc[split_index:]
 
     baseline_mae = mean_absolute_error(y_test, baseline_predictions)
 
@@ -109,7 +109,7 @@ def train_points_model():
     print("Model Performance")
     print("-----------------")
 
-    print(f"MAE:  {mae:.2f} points")
+    print(f"MAE:  {mae:.4f} points")
     print(f"RMSE: {rmse:.2f}")
     print(f"R²:   {r2:.3f}")
 
@@ -163,7 +163,7 @@ def train_points_model():
 
     print("Baseline Comparison")
     print("-------------------")
-    print(f"Linear Model MAE:   {mae:.2f} points")
+    print(f"Linear Model MAE:   {mae:.4f} points")
     print(f"Random Forest MAE:  {rf_mae:.2f} points")
     print(f"Last-5 Average MAE: {baseline_mae:.2f} points")
     improvement = baseline_mae - mae
@@ -182,7 +182,6 @@ def train_points_model():
         "PLAYER_NAME",
         "GAME_DATE",
         "MATCHUP",
-        "PTS_LAST_5",
         "PTS_LAST_10",
         "PREDICTED_PTS",
         "PTS"
