@@ -1,6 +1,7 @@
 import pandas as pd
-
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
+from sklearn.inspection import permutation_importance
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 
@@ -33,7 +34,7 @@ def train_points_model():
         "FG3M_LAST_5",
         "MIN_LAST_5",
         "PTS_LAST_10",
-	"OPP_PTS_ALLOWED_AVG",
+        "OPP_PTS_ALLOWED_AVG",
     ]
 
     opponent_features = [
@@ -42,7 +43,7 @@ def train_points_model():
         and column != "OPP_PTS_ALLOWED_AVG"
     ]
 
-    features = features + opponent_features	
+    features = features + opponent_features
     target = "PTS"
 
     df = df.dropna(
@@ -61,10 +62,23 @@ def train_points_model():
     y_test = y.iloc[split_index:]
 
     model = LinearRegression()
-
     model.fit(X_train, y_train)
 
     predictions = model.predict(X_test)
+
+    # Train Random Forest model
+    rf_model = RandomForestRegressor(
+        n_estimators=200,
+        max_depth=10,
+        min_samples_leaf=5,
+        random_state=42,
+        n_jobs=-1
+    )
+
+    rf_model.fit(X_train, y_train)
+    rf_predictions = rf_model.predict(X_test)
+    rf_mae = mean_absolute_error(y_test, rf_predictions)
+
     # Baseline: predict points using the player's last-5-game average
     baseline_predictions = X_test["PTS_LAST_5"]
 
@@ -84,7 +98,6 @@ def train_points_model():
         y_test,
         predictions
     )
-
     print("HoopsIQ Points Model")
     print("--------------------")
     print()
@@ -100,12 +113,59 @@ def train_points_model():
     print(f"RMSE: {rmse:.2f}")
     print(f"R²:   {r2:.3f}")
 
+    coefficient_df = pd.DataFrame({
+       "Feature": X_train.columns,
+       "Coefficient": model.coef_
+    })
+
+    coefficient_df["Abs_Coefficient"] = coefficient_df["Coefficient"].abs()
+    coefficient_df = coefficient_df.sort_values(
+        "Abs_Coefficient",
+        ascending=False
+    )
+
+    print()
+    print("Top Linear Model Coefficients")
+    print("-----------------------------")
+    print(
+        coefficient_df[
+            ["Feature", "Coefficient"]
+        ].head(10).to_string(index=False)
+    )
+    permutation_result = permutation_importance(
+        model,
+        X_test,
+        y_test,
+        scoring="neg_mean_absolute_error",
+        n_repeats=10,
+        random_state=42
+    )
+
+    permutation_df = pd.DataFrame({
+        "Feature": X_test.columns,
+        "Importance": permutation_result.importances_mean
+    })
+
+    permutation_df = permutation_df.sort_values(
+        "Importance",
+        ascending=False
+    )
+
+    print()
+    print("Top Permutation Importances")
+    print("---------------------------")
+    print(
+        permutation_df.head(10).to_string(
+            index=False
+        )
+    )
+
 
     print("Baseline Comparison")
     print("-------------------")
-    print(f"Last-5 Average MAE: {baseline_mae:.2f} points")
     print(f"Linear Model MAE:   {mae:.2f} points")
-
+    print(f"Random Forest MAE:  {rf_mae:.2f} points")
+    print(f"Last-5 Average MAE: {baseline_mae:.2f} points")
     improvement = baseline_mae - mae
 
     print(f"Improvement:        {improvement:.2f} points")

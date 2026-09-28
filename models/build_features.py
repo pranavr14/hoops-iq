@@ -61,6 +61,9 @@ def build_features():
         lambda x: x.shift(1).rolling(10).mean()
     )
 
+    # Recent scoring trend: positive = heating up, negative = cooling down
+    df["PTS_TREND"] = df["PTS_LAST_5"] - df["PTS_LAST_10"]
+
     # Calculate days of rest since previous game
     df["DAYS_REST"] = player_groups["GAME_DATE"].diff().dt.days
 
@@ -95,6 +98,7 @@ def build_features():
         "FG3M_LAST_5",
         "MIN_LAST_5",
         "PTS_LAST_10",
+        "PTS_TREND",
         "PTS",
         "REB",
         "AST",
