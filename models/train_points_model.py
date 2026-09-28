@@ -170,6 +170,68 @@ def train_points_model():
 
     print(f"Improvement:        {improvement:.2f} points")
 
+    # Feature ablation: remove one core feature at a time
+    # and measure the change in Linear Regression MAE.
+    ablation_features = [
+        "HOME_GAME",
+        "DAYS_REST",
+        "PTS_LAST_5",
+        "REB_LAST_5",
+        "AST_LAST_5",
+        "FG3M_LAST_5",
+        "MIN_LAST_5",
+        "PTS_LAST_10",
+        "OPP_PTS_ALLOWED_AVG",
+    ]
+
+    ablation_results = []
+
+    for feature in ablation_features:
+        ablation_X_train = X_train.drop(columns=[feature])
+        ablation_X_test = X_test.drop(columns=[feature])
+
+        ablation_model = LinearRegression()
+        ablation_model.fit(
+            ablation_X_train,
+            y_train
+        )
+
+        ablation_predictions = ablation_model.predict(
+            ablation_X_test
+        )
+
+        ablation_mae = mean_absolute_error(
+            y_test,
+            ablation_predictions
+        )
+
+        mae_change = ablation_mae - mae
+
+        ablation_results.append({
+            "Removed Feature": feature,
+            "MAE": ablation_mae,
+            "MAE Change": mae_change
+        })
+
+    ablation_df = pd.DataFrame(ablation_results)
+
+    ablation_df = ablation_df.sort_values(
+        "MAE Change",
+        ascending=False
+    )
+
+    print()
+    print("Feature Ablation Results")
+    print("------------------------")
+    print(
+        ablation_df.to_string(
+            index=False,
+            formatters={
+                "MAE": "{:.4f}".format,
+                "MAE Change": "{:+.4f}".format
+            }
+        )
+    )
     print()
     print("Sample Predictions")
     print("------------------")
