@@ -213,6 +213,37 @@ def train_points_model():
             "MAE Change": mae_change
         })
 
+
+    # Group ablation: remove all opponent identity dummy variables.
+    opponent_ablation_X_train = X_train.drop(
+        columns=opponent_features
+    )
+    opponent_ablation_X_test = X_test.drop(
+        columns=opponent_features
+    )
+
+    opponent_ablation_model = LinearRegression()
+    opponent_ablation_model.fit(
+        opponent_ablation_X_train,
+        y_train
+    )
+
+    opponent_ablation_predictions = opponent_ablation_model.predict(
+        opponent_ablation_X_test
+    )
+
+    opponent_ablation_mae = mean_absolute_error(
+        y_test,
+        opponent_ablation_predictions
+    )
+
+    opponent_mae_change = opponent_ablation_mae - mae
+
+    ablation_results.append({
+        "Removed Feature": "ALL_OPPONENT_DUMMIES",
+        "MAE": opponent_ablation_mae,
+        "MAE Change": opponent_mae_change
+    })
     ablation_df = pd.DataFrame(ablation_results)
 
     ablation_df = ablation_df.sort_values(
