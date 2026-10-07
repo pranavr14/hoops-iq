@@ -218,3 +218,6 @@ __marimo__/
 .streamlit/secrets.toml
 .env
 data/*.csv
+
+# Trained model artifacts
+models/artifacts/*.joblib
