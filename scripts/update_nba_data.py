@@ -144,7 +144,7 @@ def number(value) -> int | float:
 
 def minutes_as_decimal(value) -> float:
     text = str(value or "0").strip()
-    if not text or text == "-":
+    if not text or text in {"-", "--"}:
         return 0.0
     if ":" in text:
         minutes, seconds = text.split(":", 1)
