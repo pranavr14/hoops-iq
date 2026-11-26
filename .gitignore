@@ -221,3 +221,4 @@ data/*.csv
 
 # Trained model artifacts
 models/artifacts/*.joblib
+*.bak

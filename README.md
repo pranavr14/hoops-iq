@@ -33,7 +33,7 @@ The project is built for educational sports analytics and is not intended for be
 
 ## Project Status
 
-🚧 In development
+🚧 In development; the V2 prediction API and frontend deployment configuration are ready for a public demo.
 
 ## Run the prediction API
 
@@ -70,3 +70,23 @@ The command-line interface remains available:
 ```
 
 Without `--home`, the command-line prediction is for an away game.
+
+## Deploy the public demo
+
+The intended deployment uses a free Render web service for the FastAPI backend and a Vercel static site for the React frontend. Free Render services can sleep after inactivity, so the first API request after a quiet period may take longer.
+
+### Backend on Render
+
+1. Import this repository's `feature/prediction-pipeline` branch as a Render Blueprint. Render reads the root `render.yaml` file and uses the free plan in the Ohio region.
+2. The build installs `requirements.txt`, then downloads and checksum-verifies the runtime bundle from the GitHub Release tagged `hoops-iq-runtime-v2`.
+3. After the first deploy, copy the API's `https://…onrender.com` URL. Set `FRONTEND_ORIGINS` to the Vercel site's exact origin if it differs from the default in `render.yaml`.
+
+The CSV data and trained models stay out of Git. The release asset contains only the game-log CSV required by the V2 API and its four V2 model files. To refresh the bundle, replace the release asset and update its SHA-256 value in `scripts/download_runtime_assets.py`.
+
+### Frontend on Vercel
+
+1. Import this repository and set the Vercel project root directory to `frontend`; select the `feature/prediction-pipeline` production branch.
+2. Vercel uses `frontend/vercel.json` to build with `npm run build` and publish `dist`.
+3. Add the `VITE_API_URL` environment variable with the Render API base URL (no trailing slash), then redeploy.
+
+Vercel's free Hobby plan is intended for personal, non-commercial projects. Keep `.env`, datasets, model files, and temporary backups out of Git.

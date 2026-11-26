@@ -1,4 +1,5 @@
 """Run from the project root: python -m uvicorn backend.main:app --reload."""
+import os
 from pathlib import Path
 import pandas as pd
 from datetime import date
@@ -18,6 +19,12 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+    ] + [
+        origin.strip().rstrip("/")
+        for origin in os.getenv(
+            "FRONTEND_ORIGINS", ""
+        ).split(",")
+        if origin.strip()
     ],
     allow_credentials=False,
     allow_methods=["GET", "POST"],
