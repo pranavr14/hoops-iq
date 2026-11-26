@@ -13,7 +13,7 @@ ASSET_URL = (
     "https://github.com/pranavr14/hoops-iq/releases/download/"
     "hoops-iq-runtime-v2/hoops-iq-runtime-v2.zip"
 )
-EXPECTED_SHA256 = "c88f7e95320953d08ece2d96b0eb4ceaf788c336b8c785b532caa2b307febb25"
+EXPECTED_SHA256 = "5a6bf7913daf18e8f8c2054adbc25289d8094d7bccb00e8ff6ba95702cd3c785"
 EXPECTED_FILES = {
     "data/player_game_logs_2025_27.csv",
     "models/artifacts/points_model_v2.joblib",
