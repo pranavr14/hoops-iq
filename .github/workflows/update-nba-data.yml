@@ -1,0 +1,108 @@
+name: Refresh NBA data and retrain HoopsIQ
+
+on:
+  schedule:
+    # Run after the previous night's games have had time to reach the NBA feed.
+    - cron: "30 13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hoopsiq-nba-data-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the production branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/prediction-pipeline
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install project dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Fetch updated schedule and final box scores
+        id: refresh
+        run: python scripts/update_nba_data.py
+
+      - name: Rebuild features and retrain models
+        if: steps.refresh.outputs.games_added != '0'
+        run: |
+          python models/build_features_v2.py
+          python models/train_multi_stat_models_v2.py
+
+      - name: Package current data and models
+        if: steps.refresh.outputs.games_added != '0'
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+
+          files = [
+              Path("data/player_game_logs_2025_27.csv"),
+              Path("models/artifacts/points_model_v2.joblib"),
+              Path("models/artifacts/rebounds_model_v2.joblib"),
+              Path("models/artifacts/assists_model_v2.joblib"),
+              Path("models/artifacts/threes_model_v2.joblib"),
+          ]
+          output = Path(os.environ["RUNNER_TEMP"]) / "hoops-iq-runtime-v2.zip"
+          with ZipFile(output, "w", ZIP_DEFLATED) as archive:
+              for path in files:
+                  if not path.is_file():
+                      raise SystemExit(f"Missing runtime asset: {path}")
+                  archive.write(path, path.as_posix())
+          print(f"Created {output} ({output.stat().st_size:,} bytes)")
+          PY
+
+      - name: Update the pinned runtime bundle
+        if: steps.refresh.outputs.games_added != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bundle_sha256="$(sha256sum "$RUNNER_TEMP/hoops-iq-runtime-v2.zip" | cut -d ' ' -f 1)"
+          python - "$bundle_sha256" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          checksum = sys.argv[1]
+          path = Path("scripts/download_runtime_assets.py")
+          source = path.read_text(encoding="utf-8")
+          updated, count = re.subn(
+              r'EXPECTED_SHA256 = "[0-9a-f]{64}"',
+              f'EXPECTED_SHA256 = "{checksum}"',
+              source,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Could not update the pinned runtime bundle checksum.")
+          path.write_text(updated, encoding="utf-8")
+          PY
+          gh release upload hoops-iq-runtime-v2 "$RUNNER_TEMP/hoops-iq-runtime-v2.zip" --clobber
+
+      - name: Commit refreshed data for deployment
+        if: steps.refresh.outputs.data_changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/player_game_logs_2025_27.csv data/nba_schedule.json scripts/download_runtime_assets.py
+          if git diff --cached --quiet; then
+            echo "No refreshed files to commit."
+            exit 0
+          fi
+          git commit -m "chore(data): refresh NBA games and predictions"
+          git push origin HEAD:feature/prediction-pipeline
