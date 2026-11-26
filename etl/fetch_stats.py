@@ -3,7 +3,7 @@ from nba_api.stats.endpoints import playergamelogs
 
 def fetch_player_game_logs():
     game_logs = playergamelogs.PlayerGameLogs(
-        season_nullable="2025-26",
+        season_nullable="2026-27",
         season_type_nullable="Regular Season"
     )
 
@@ -31,7 +31,7 @@ def fetch_player_game_logs():
     print("NBA player game stats request successful!")
     print()
     print(df.head(10).to_string(index=False))
-    output_path = "data/player_game_logs_2025_26.csv"
+    output_path = "data/player_game_logs_2026_27.csv"
     df.to_csv(output_path, index=False)
 
     print()

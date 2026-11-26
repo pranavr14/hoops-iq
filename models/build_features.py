@@ -26,16 +26,39 @@ def build_features():
     )
 
 
-    # Group data by player
-    player_groups = df.groupby("PLAYER_ID")
-    
-    # Group data by opponent
-    opponent_groups = df.groupby("OPPONENT")
-
-    # Average points scored against this opponent in prior games only
-    df["OPP_PTS_ALLOWED_AVG"] = opponent_groups["PTS"].transform(
-        lambda x: x.shift(1).expanding().mean()
+    # Calculate opponent averages using only earlier game dates.
+    opponent_daily = (
+        df.groupby(["OPPONENT", "GAME_DATE"])["PTS"]
+        .agg(total_points="sum", player_games="count")
+        .reset_index()
+        .sort_values(["OPPONENT", "GAME_DATE"])
     )
+
+    opponent_daily["prior_points"] = (
+        opponent_daily.groupby("OPPONENT")["total_points"].cumsum()
+        - opponent_daily["total_points"]
+    )
+
+    opponent_daily["prior_player_games"] = (
+        opponent_daily.groupby("OPPONENT")["player_games"].cumsum()
+        - opponent_daily["player_games"]
+    )
+
+    opponent_daily["OPP_PTS_ALLOWED_AVG"] = (
+        opponent_daily["prior_points"]
+        / opponent_daily["prior_player_games"]
+    )
+
+    df = df.merge(
+        opponent_daily[["OPPONENT", "GAME_DATE", "OPP_PTS_ALLOWED_AVG"]],
+        on=["OPPONENT", "GAME_DATE"],
+        how="left",
+        validate="many_to_one",
+    )
+
+    # Group players after the merge for rolling statistics.
+    player_groups = df.groupby("PLAYER_ID")
+
     # Rolling averages use ONLY games before the game being predicted
     df["PTS_LAST_5"] = player_groups["PTS"].transform(
         lambda x: x.shift(1).rolling(5).mean()
