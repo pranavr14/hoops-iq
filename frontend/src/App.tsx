@@ -3,38 +3,45 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 
-const teams = [
-  'ATL', 'BOS', 'BKN', 'CHA', 'CHI', 'CLE',
-  'DAL', 'DEN', 'DET', 'GSW', 'HOU', 'IND',
-  'LAC', 'LAL', 'MEM', 'MIA', 'MIL', 'MIN',
-  'NOP', 'NYK', 'OKC', 'ORL', 'PHI', 'PHX',
-  'POR', 'SAC', 'SAS', 'TOR', 'UTA', 'WAS',
-]
-
-
 type PredictionResponse = {
+  player_name: string
+  team: string
+  opponent: string
+  game_date: string
+  home_game: boolean
+  game_id: string
+  player_last_game_date: string
   predicted_points: number
   predicted_rebounds: number
   predicted_assists: number
   predicted_threes: number
+  warnings: string[]
   detail?: string
+}
+
+type DataStatus = {
+  stats_through: string
+  model_validation_mae: number
+  model_features: number
+  schedule_available: boolean
+}
+
+const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+
+function formatDate(value: string) {
+  return new Date(`${value}T12:00:00`).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 
 function App() {
   const [player, setPlayer] = useState('LeBron James')
   const [players, setPlayers] = useState<string[]>([])
-  const [opponent, setOpponent] = useState('MIL')
-  const [gameDate, setGameDate] = useState(() => {
-    const today = new Date()
-    const year = today.getFullYear()
-    const month = String(today.getMonth() + 1).padStart(2, '0')
-    const day = String(today.getDate()).padStart(2, '0')
-
-    return `${year}-${month}-${day}`
-  })
-  const [homeGame, setHomeGame] = useState(true)
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null)
+  const [dataStatus, setDataStatus] = useState<DataStatus | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -43,7 +50,7 @@ function App() {
     async function loadPlayers() {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/players`
+          `${apiUrl}/players`
         )
 
         if (!response.ok) {
@@ -60,6 +67,19 @@ function App() {
     }
 
     loadPlayers()
+
+    async function loadDataStatus() {
+      try {
+        const response = await fetch(`${apiUrl}/status`)
+        if (response.ok) {
+          setDataStatus(await response.json() as DataStatus)
+        }
+      } catch (error) {
+        console.error('Unable to load NBA data freshness:', error)
+      }
+    }
+
+    loadDataStatus()
   }, [])
 
   async function handlePredict(event: FormEvent<HTMLFormElement>) {
@@ -69,20 +89,17 @@ function App() {
     setPrediction(null)
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/predict/v2`, {
+      const response = await fetch(`${apiUrl}/predict/next`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           player_name: player.trim(),
-          opponent,
-          game_date: gameDate,
-          home_game: homeGame,
         }),
       })
 
-      const data: PredictionResponse = await response.json()
+      const data = await response.json() as PredictionResponse
 
       if (!response.ok) {
         throw new Error(
@@ -145,8 +162,8 @@ function App() {
             <span>Back it with data.</span>
           </h1>
           <p className="hero-description">
-            NBA player scoring predictions powered by machine learning,
-            historical performance, and matchup statistics.
+            Choose a player. HoopsIQ finds their next scheduled game and
+            projects points, rebounds, assists, and threes using updated game logs.
           </p>
         </section>
 
@@ -154,7 +171,7 @@ function App() {
           <div className="panel">
             <div className="panel-heading">
               <h2>NBA Player Stat Predictor</h2>
-              <p>Enter a matchup to predict points, rebounds, assists, and threes.</p>
+              <p>Type or select a player. HoopsIQ finds the next matchup automatically.</p>
             </div>
 
             <form onSubmit={handlePredict}>
@@ -169,6 +186,7 @@ function App() {
                   onChange={(e) => setPlayer(e.target.value)}
                   placeholder="Search NBA players..."
                   required
+                  autoComplete="off"
                 />
 
                 <datalist id="nba-players">
@@ -179,54 +197,12 @@ function App() {
 
               </div>
 
-              <div className="field-row">
-                <div className="field">
-                  <label htmlFor="opponent">Opponent</label>
-                  <select
-                    id="opponent"
-                    value={opponent}
-                    onChange={(e) => setOpponent(e.target.value)}
-                  >
-                    {teams.map((team) => (
-                      <option key={team} value={team}>
-                        {team}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="field">
-                  <label htmlFor="date">Game Date</label>
-                  <input
-                    id="date"
-                    type="date"
-                    value={gameDate}
-                    onChange={(e) => setGameDate(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="field">
-                <label htmlFor="location">Game Location</label>
-                <select
-                  id="location"
-                  value={homeGame ? 'home' : 'away'}
-                  onChange={(e) =>
-                    setHomeGame(e.target.value === 'home')
-                  }
-                >
-                  <option value="home">Home Game</option>
-                  <option value="away">Away Game</option>
-                </select>
-              </div>
-
               <button
                 className="predict-button"
                 type="submit"
                 disabled={loading}
               >
-                {loading ? 'Calculating...' : 'Predict Player Stats →'}
+                {loading ? 'Finding next matchup...' : 'Find Next Matchup & Predict →'}
               </button>
             </form>
 
@@ -274,10 +250,16 @@ function App() {
                   </div>
                 </div>
 
-                <p className="result-player">{player}</p>
+                <p className="result-player">{prediction.player_name}</p>
                 <p className="result-matchup">
-                  vs. {opponent} · {homeGame ? 'Home' : 'Away'}
+                  {prediction.team} {prediction.home_game ? 'vs.' : '@'} {prediction.opponent}
+                  {' · '}{prediction.home_game ? 'Home' : 'Away'}{' · '}{formatDate(prediction.game_date)}
                 </p>
+                {prediction.warnings.length > 0 && (
+                  <ul className="prediction-warnings">
+                    {prediction.warnings.map((warning) => <li key={warning}>{warning}</li>)}
+                  </ul>
+                )}
               </div>
             ) : (
 
@@ -285,8 +267,7 @@ function App() {
                 <div className="basketball-icon">🏀</div>
                 <h3>Your prediction awaits</h3>
                 <p>
-                  Select a player and matchup, then click
-                  Predict Player Stats to see the model's projections.
+                  Enter a player and HoopsIQ will find their next scheduled game.
                 </p>
               </div>
             )}
@@ -300,11 +281,11 @@ function App() {
           </div>
           <div className="metric">
             <p>VALIDATION MAE</p>
-            <h3>4.95 Points</h3>
+            <h3>{dataStatus ? `${dataStatus.model_validation_mae.toFixed(2)} Points` : 'Loading…'}</h3>
           </div>
           <div className="metric">
             <p>MODEL FEATURES</p>
-            <h3>43</h3>
+            <h3>{dataStatus?.model_features ?? '—'}</h3>
           </div>
         </section>
 
@@ -313,8 +294,10 @@ function App() {
             HoopsIQ · NBA Player Performance Analytics
           </p>
           <p>
-            Model v2 trained on 2025–26 and early 2026–27 NBA data.
-            Historical predictions are not independent evaluations.
+            {dataStatus
+              ? `Game stats current through ${formatDate(dataStatus.stats_through)}. Data and models refresh automatically each day after completed games.`
+              : 'Checking the latest NBA data…'}
+            {' '}Predictions are estimates, not guarantees.
           </p>
         </footer>
       </main>

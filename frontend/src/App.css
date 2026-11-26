@@ -319,6 +319,19 @@
   font-size: 14px;
 }
 
+.prediction-warnings {
+  width: 100%;
+  margin: 0;
+  padding: 11px 14px 11px 32px;
+  color: #ffd5bc;
+  background: rgba(255, 121, 69, 0.08);
+  border: 1px solid rgba(255, 121, 69, 0.2);
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: left;
+}
+
 /* Model statistics */
 
 .metrics {

@@ -1,6 +1,7 @@
 """Download and verify the public model/data bundle used by the Render API."""
 
 from hashlib import sha256
+import csv
 from pathlib import Path, PurePosixPath
 import tempfile
 from urllib.request import Request, urlopen
@@ -49,13 +50,33 @@ def main() -> None:
                 if path.is_absolute() or ".." in path.parts:
                     raise SystemExit("Unsafe path in runtime asset bundle.")
 
-            archive.extractall(PROJECT_ROOT)
+            # The game log is tracked in the deployment branch and refreshed
+            # nightly. Keep that copy; the release copy is only a first-install
+            # fallback. The trained models continue to come from the release.
+            data_file = PROJECT_ROOT / "data/player_game_logs_2025_27.csv"
+            for name in sorted(names):
+                if name.startswith("models/artifacts/") or not data_file.is_file():
+                    archive.extract(name, PROJECT_ROOT)
 
     missing = [name for name in EXPECTED_FILES if not (PROJECT_ROOT / name).is_file()]
     if missing:
         raise SystemExit(f"Runtime asset extraction is incomplete: {missing}")
 
-    print(f"Installed and verified {len(EXPECTED_FILES)} runtime asset files.")
+    data_file = PROJECT_ROOT / "data/player_game_logs_2025_27.csv"
+    with data_file.open(newline="", encoding="utf-8") as csv_file:
+        reader = csv.DictReader(csv_file)
+        if not reader.fieldnames or not {"PLAYER_NAME", "GAME_DATE"}.issubset(
+            reader.fieldnames
+        ):
+            raise SystemExit("Player game log is missing required columns.")
+        dates = [row["GAME_DATE"] for row in reader if row.get("GAME_DATE")]
+    if not dates:
+        raise SystemExit("Player game log contains no game dates.")
+
+    print(
+        f"Installed models and verified player data through {max(dates)} "
+        f"({len(EXPECTED_FILES)} expected bundle files)."
+    )
 
 
 if __name__ == "__main__":
