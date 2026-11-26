@@ -58,15 +58,16 @@ matchups. `GET /status` returns the latest game-log date and current model metri
 
 The GitHub Actions workflow `.github/workflows/update-nba-data.yml` runs daily
 after the previous night's games and can also be started manually from the
-repository's Actions tab. It downloads the latest schedule and completed game
-box scores from NBA's public CDN, adds new player rows, rebuilds features, and
+repository's Actions tab. It downloads the current schedule and completed game
+box scores from ESPN's public NBA data feed, adds new player rows, rebuilds features, and
 re-trains the four stat models. When the refresh succeeds, it updates the runtime
 bundle and commits the new schedule/data to the production branch. Render then
 deploys the API with the refreshed data and Vercel rebuilds the app.
 
-The data refresh uses NBA's public CDN feeds without a paid API key. Those feeds
-are not a supported developer API with an uptime guarantee; if a refresh cannot
-be completed, the workflow fails without publishing a partial game-log update.
+The refresh uses ESPN's public JSON NBA schedule and box-score feeds without an
+API key or paid subscription. Each run refreshes recent game days plus the next
+35 days of scheduled games. If a refresh cannot be completed, the workflow fails
+without publishing a partial game-log update.
 The player-to-team lookup follows each player's most recently recorded game, so
 a trade is reflected after the player appears in a game for the new team.
 
